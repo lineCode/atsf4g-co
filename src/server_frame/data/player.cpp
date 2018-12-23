@@ -16,15 +16,15 @@
 
 player::player(fake_constructor &) : user_id_(0), data_version_(0) {
     heartbeat_data_.continue_error_times = 0;
-    heartbeat_data_.last_recv_time = 0;
-    heartbeat_data_.sum_error_times = 0;
+    heartbeat_data_.last_recv_time       = 0;
+    heartbeat_data_.sum_error_times      = 0;
 }
 
 player::~player() { WLOGDEBUG("player %s destroyed", openid_id_.c_str()); }
 
 void player::init(uint64_t user_id, const std::string &openid) {
-    user_id_ = user_id;
-    openid_id_ = openid;
+    user_id_      = user_id;
+    openid_id_    = openid;
     data_version_ = 0;
 
     // all manager init
@@ -33,7 +33,7 @@ void player::init(uint64_t user_id, const std::string &openid) {
 
 player::ptr_t player::create(uint64_t user_id, const std::string &openid) {
     fake_constructor ctorp;
-    ptr_t ret = std::make_shared<player>(ctorp);
+    ptr_t            ret = std::make_shared<player>(ctorp);
     if (ret) {
         ret->init(user_id, openid);
     }
@@ -60,16 +60,16 @@ void player::create_init(uint32_t version_type) {
 }
 
 void player::login_init() {
-    // refresh platform parameters
+    // refresh account parameters
     {
-        hello::platform_information &platform = get_platform_info();
-        platform.set_access(get_login_info().platform().access());
-        platform.set_platform_id(get_login_info().platform().platform_id());
-        platform.set_version_type(get_login_info().platform().version_type());
+        hello::account_information &account = get_account_info();
+        account.set_access(get_login_info().account().access());
+        account.set_account_type(get_login_info().account().account_type());
+        account.set_version_type(get_login_info().account().version_type());
 
         // 冗余的key字段
-        platform.mutable_profile()->set_open_id(get_open_id());
-        platform.mutable_profile()->set_user_id(get_user_id());
+        account.mutable_profile()->set_open_id(get_open_id());
+        account.mutable_profile()->set_user_id(get_user_id());
     }
 
     // TODO check all interval checkpoint
@@ -121,22 +121,22 @@ void player::init_from_table_data(const hello::table_user &tb_player) {
     // hello::table_user tb_patch;
     const hello::table_user *src_tb = &tb_player;
     // if (data_version_ < PLAYER_DATA_LOGIC_VERSION) {
-    //     tb_patch.CopyFrom(tb_player);
+    //     protobuf_mini_dumper_copy(tb_patch, tb_player);
     //     src_tb = &tb_patch;
     //     //GameUserPatchMgr::Instance()->Patch(tb_patch, m_iDataVersion, GAME_USER_DATA_LOGIC);
     //     data_version_ = PLAYER_DATA_LOGIC_VERSION;
     // }
 
-    if (src_tb->has_platform()) {
-        platform_info_.ref().CopyFrom(src_tb->platform());
+    if (src_tb->has_account()) {
+        protobuf_mini_dumper_copy(account_info_.ref(), src_tb->account());
     }
 
     if (src_tb->has_player()) {
-        player_data_.ref().CopyFrom(src_tb->player());
+        protobuf_mini_dumper_copy(player_data_.ref(), src_tb->player());
     }
 
     if (src_tb->has_options()) {
-        player_options_.ref().CopyFrom(src_tb->options());
+        protobuf_mini_dumper_copy(player_options_.ref(), src_tb->options());
     }
 
     // TODO all modules load from DB
@@ -148,15 +148,15 @@ int player::dump(hello::table_user &user, bool always) {
     user.set_data_version(data_version_);
 
     if (always || player_data_.is_dirty()) {
-        user.mutable_player()->CopyFrom(player_data_);
+        protobuf_mini_dumper_copy(*user.mutable_player(), player_data_.ref());
     }
 
-    if (always || platform_info_.is_dirty()) {
-        user.mutable_platform()->CopyFrom(platform_info_);
+    if (always || account_info_.is_dirty()) {
+        protobuf_mini_dumper_copy(*user.mutable_account(), account_info_.ref());
     }
 
     if (always || player_options_.is_dirty()) {
-        user.mutable_options()->CopyFrom(player_options_);
+        protobuf_mini_dumper_copy(*user.mutable_options(), player_options_.ref());
     }
 
     return 0;
@@ -164,7 +164,7 @@ int player::dump(hello::table_user &user, bool always) {
 
 bool player::gm_init() { return true; }
 
-bool player::is_gm() const { return get_platform_info().platform_id() == hello::EN_OS_WINDOWS; }
+bool player::is_gm() const { return get_account_info().version_type() == hello::EN_VERSION_GM; }
 
 player::ptr_t player::get_global_gm_player() {
     static ptr_t shared_gm_player;
@@ -204,11 +204,11 @@ void player::set_player_level(uint32_t level) {
 }
 
 void player::update_heartbeat() {
-    const logic_config::LC_LOGIC &logic_cfg = logic_config::me()->get_cfg_logic();
-    time_t heartbeat_interval = logic_cfg.heartbeat_interval;
-    time_t heartbeat_tolerance = logic_cfg.heartbeat_tolerance;
-    time_t tol_dura = heartbeat_interval - heartbeat_tolerance;
-    time_t now_time = util::time::time_utility::get_now();
+    const logic_config::LC_LOGIC &logic_cfg           = logic_config::me()->get_cfg_logic();
+    time_t                        heartbeat_interval  = logic_cfg.heartbeat_interval;
+    time_t                        heartbeat_tolerance = logic_cfg.heartbeat_tolerance;
+    time_t                        tol_dura            = heartbeat_interval - heartbeat_tolerance;
+    time_t                        now_time            = util::time::time_utility::get_now();
 
     // 小于容忍值得要统计错误次数
     if (now_time - heartbeat_data_.last_recv_time < tol_dura) {
@@ -246,10 +246,10 @@ void player::try_patch_remote_command() {
 
     inner_flags_.set(inner_flag::EN_IFT_NEED_PATCH_REMOTE_COMMAND, false);
 
-    task_manager::id_t tid = 0;
+    task_manager::id_t                                 tid = 0;
     task_action_player_remote_patch_jobs::ctor_param_t params;
-    params.user = shared_from_this();
-    params.timeout_duration = logic_config::me()->get_cfg_logic().task_nomsg_timeout;
+    params.user              = shared_from_this();
+    params.timeout_duration  = logic_config::me()->get_cfg_logic().task_nomsg_timeout;
     params.timeout_timepoint = util::time::time_utility::get_now() + params.timeout_duration;
     task_manager::me()->create_task_with_timeout<task_action_player_remote_patch_jobs>(tid, params.timeout_duration, COPP_MACRO_STD_MOVE(params));
 
@@ -259,7 +259,7 @@ void player::try_patch_remote_command() {
         remote_command_patch_task_ = task_manager::me()->get_task(tid);
 
         dispatcher_start_data_t start_data;
-        start_data.private_data = NULL;
+        start_data.private_data     = NULL;
         start_data.message.msg_addr = NULL;
         start_data.message.msg_type = 0;
 

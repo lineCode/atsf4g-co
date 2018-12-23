@@ -43,7 +43,7 @@ int task_action_ss_req_base::hook_run() {
                 return hello::err::EN_ROUTER_TYPE_INVALID;
             }
 
-            router_manager_base::key_t key(router.object_type_id(), router.object_inst_id());
+            router_manager_base::key_t          key(router.object_type_id(), router.object_inst_id());
             std::shared_ptr<router_object_base> obj = mgr->get_base_cache(key);
 
             // 如果正在迁移，追加到pending队列，本task直接退出
@@ -73,7 +73,7 @@ int task_action_ss_req_base::hook_run() {
             // 如果本地路由版本号大于来源，通知来源更新路由表
             if (obj->get_router_version() > router.router_version()) {
                 hello::SSRouterUpdateSync sync_msg;
-                hello::SSRouterHead *router_head = sync_msg.mutable_object();
+                hello::SSRouterHead *     router_head = sync_msg.mutable_object();
                 if (NULL != router_head) {
                     router_head->set_router_src_bus_id(obj->get_router_server_id());
                     router_head->set_router_version(obj->get_router_version());
@@ -147,7 +147,7 @@ int32_t task_action_ss_req_base::init_msg(msg_ref_type msg, uint64_t dst_pd) {
 }
 
 int32_t task_action_ss_req_base::init_msg(msg_ref_type msg, uint64_t dst_pd, msg_cref_type req_msg) {
-    msg.mutable_head()->CopyFrom(req_msg.head());
+    protobuf_mini_dumper_copy(*msg.mutable_head(), req_msg.head());
     init_msg(msg, dst_pd);
 
     // set task information

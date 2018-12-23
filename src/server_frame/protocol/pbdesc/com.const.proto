@@ -11,9 +11,19 @@ enum EnConstLimits {
     EN_CL_MAX_AUTH_TOKEN_LENGHT = 128;   // token length limit
 }
 
-// Platform type
+// account type
+enum EnAccountTypeID {
+    EN_ATI_ACCOUNT_INNER     = 0; // inner: username/password
+    EN_ATI_ACCOUNT_IOS_GUEST = 1; // ios guest
+}
+
+// platform id
 enum EnPlatformTypeID {
-    EN_PTI_ACCOUNT = 0; // inner: username/password
+    EN_PTI_WINDOWS = 0; // PC
+    EN_PTI_LINUX   = 1; // PC
+    EN_PTI_MAXOS   = 2; // PC
+    EN_PTI_IOS     = 3; // ios
+    EN_PTI_ANDROID = 4; // android 
 }
 
 // channel id

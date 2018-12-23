@@ -20,12 +20,12 @@ namespace rpc {
                 }
             }
 
-            std::string make_open_id(uint32_t zone_id, uint32_t plat_id, uint32_t channel_id, const std::string &openid) {
+            std::string make_open_id(uint32_t zone_id, uint32_t account_type, uint32_t channel_id, const std::string &openid) {
                 std::ostringstream openid_buff;
-                openid_buff << "z-" << zone_id << ":p-" << plat_id << ":"
+                openid_buff << "z-" << zone_id << ":at-" << account_type << ":"
                             << "c-" << channel_id << ":" << openid;
                 return openid_buff.str();
             }
-        }
-    }
-}
+        } // namespace login
+    }     // namespace auth
+} // namespace rpc

@@ -37,10 +37,10 @@ message DAppleGameCenter {
 }
 
 // 平台信息
-message DPlatformData {
-    uint32 platform_id = 1; // 平台类型 EnPlatformTypeID
-    string access      = 2; // 授权码（内置账户的话就是密码的hash值，OAuth的话就是access token）
-    uint32 channel_id  = 3; // 渠道ID（某些品太需要区分认证体系以外的渠道号） @see EnPlatformChannelID
+message DAccountData {
+    uint32 account_type = 1; // 平台类型 EnAccountTypeID
+    string access       = 2; // 授权码（内置账户的话就是密码的hash值，OAuth的话就是access token）
+    uint32 channel_id   = 3; // 渠道ID（某些品太需要区分认证体系以外的渠道号） @see EnPlatformChannelID
 }
 
 message DUpdateData {

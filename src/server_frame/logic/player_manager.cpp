@@ -113,14 +113,14 @@ player_manager::player_ptr_t player_manager::create(uint64_t user_id, const std:
         // TODO add nickname if need
         // std::string nick_name = "Nickname: " + openid;
 
-        ret->get_platform_info().CopyFrom(ret->get_login_info().platform());
+        protobuf_mini_dumper_copy(ret->get_account_info(), ret->get_login_info().account());
         // ret->get_player_data().mutable_basic()->mutable_profile()->set_name(nick_name);
 
         // manager 创建初始化
-        if (ret->get_login_info().platform().version_type() >= hello::EN_VERSION_INNER) {
+        if (ret->get_login_info().account().version_type() >= hello::EN_VERSION_INNER) {
             ret->create_init(hello::EN_VERSION_DEFAULT);
         } else {
-            ret->create_init(ret->get_login_info().platform().version_type());
+            ret->create_init(ret->get_login_info().account().version_type());
         }
 
         // 初始化完成，保存一次

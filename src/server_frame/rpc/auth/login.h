@@ -7,8 +7,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <cstddef>
+#include <stdint.h>
 #include <string>
 
 namespace rpc {
@@ -22,15 +22,15 @@ namespace rpc {
             void generate_login_code(char *code, size_t sz);
 
             /**
-             * @brief add platform and channel prefix into openid
-             * @param plat_id platform id (determine how to login)
+             * @brief add account and channel prefix into openid
+             * @param account_type account type (determine how to login)
              * @param channel_id channel id (what's the publish channel)
              * @param openid raw openid
              * @return final openid
              */
-            std::string make_open_id(uint32_t zone_id, uint32_t plat_id, uint32_t channel_id, const std::string &openid);
-        }
-    }
-}
+            std::string make_open_id(uint32_t zone_id, uint32_t account_type, uint32_t channel_id, const std::string &openid);
+        } // namespace login
+    }     // namespace auth
+} // namespace rpc
 
 #endif //_RPC_AUTH_LOGIN_H

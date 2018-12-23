@@ -40,7 +40,7 @@ int task_action_player_login::operator()() {
         return hello::err::EN_SUCCESS;
     }
 
-    int res = 0;
+    int                        res      = 0;
     const ::hello::CSLoginReq &msg_body = req.body().mcs_login_req();
 
     // 先查找用户缓存，使用缓存。如果缓存正确则不需要拉取login表和user表
@@ -83,7 +83,7 @@ int task_action_player_login::operator()() {
     }
 
     hello::table_login tb;
-    std::string version;
+    std::string        version;
     res = rpc::db::login::get(msg_body.open_id().c_str(), tb, version);
     if (res < 0) {
         WLOGERROR("player %s not found", msg_body.open_id().c_str());
@@ -122,7 +122,7 @@ int task_action_player_login::operator()() {
 
     if (!user || !user->is_inited()) {
         if (!user) {
-            user = player_manager::me()->create(msg_body.user_id(), msg_body.open_id(), tb, version);
+            user           = player_manager::me()->create(msg_body.user_id(), msg_body.open_id(), tb, version);
             is_new_player_ = user && user->get_version() == "1";
         } else {
             user->get_login_info().Swap(&tb);
@@ -135,19 +135,7 @@ int task_action_player_login::operator()() {
             return hello::err::EN_SUCCESS;
         }
 
-        // OSS Log
-        // {
-        //     hello::log::LOGRegister log_data;
-        //     log_data.set_login_pd(logic_config::me()->get_self_bus_id());
-        //     log_data.set_platform_id(user->get_login_info().platform().platform_id());
-        //     log_data.set_register_time(util::time::time_utility::get_now());
-        //     if (msg_body.has_client_info()) {
-        //         log_data.set_system_id(msg_body.client_info().system_id());
-        //     } else {
-        //         log_data.set_system_id(0);
-        //     }
-        //     global_log_manager::me()->log(msg_body.user_id(), msg_body.open_id(), log_data);
-        // }
+        // TODO Log
     } else {
         user->get_login_info().Swap(&tb);
         user->get_login_version().swap(version);
@@ -173,24 +161,12 @@ int task_action_player_login::operator()() {
     WLOGDEBUG("player %s(%llu) login curr data version:%s", user->get_open_id().c_str(), user->get_user_id_llu(), user->get_version().c_str());
 
     // 9. 登入成功
-    // OSS Log
-    // {
-    //     hello::log::LogLogin log_data;
-    //     log_data.set_login_pd(logic_config::me()->get_self_bus_id());
-    //     log_data.set_platform_id(user->get_login_info().platform().platform_id());
-    //     log_data.set_register_time(util::time::time_utility::get_now());
-    //     if (msg_body.has_client_info()) {
-    //         log_data.set_system_id(msg_body.client_info().system_id());
-    //     } else {
-    //         log_data.set_system_id(0);
-    //     }
-    //     global_log_manager::me()->log(msg_body.user_id(), msg_body.open_id(), log_data);
-    // }
+    // TODO Log
     return hello::err::EN_SUCCESS;
 }
 
 int task_action_player_login::on_success() {
-    hello::CSMsg &msg = add_rsp_msg();
+    hello::CSMsg &       msg      = add_rsp_msg();
     ::hello::SCLoginRsp *rsp_body = msg.mutable_body()->mutable_msc_login_rsp();
 
     rsp_body->set_heartbeat_interval(static_cast<uint32_t>(logic_config::me()->get_cfg_logic().heartbeat_interval));
@@ -214,7 +190,7 @@ int task_action_player_login::on_success() {
         return get_ret_code();
     }
     rsp_body->set_zone_id(user->get_zone_id());
-    rsp_body->set_version_type(user->get_platform_info().version_type());
+    rsp_body->set_version_type(user->get_account_info().version_type());
 
     // TODO 断线重连，上次收包序号
     // rsp_body->set_last_sequence(user->get_cache_data());
@@ -228,7 +204,7 @@ int task_action_player_login::on_success() {
 
     // 自动启动异步任务
     {
-        task_manager::id_t tid = 0;
+        task_manager::id_t                          tid = 0;
         task_action_player_async_jobs::ctor_param_t params;
         params.user = user;
         task_manager::me()->create_task_with_timeout<task_action_player_async_jobs>(tid, logic_config::me()->get_cfg_logic().task_nomsg_timeout,
@@ -237,7 +213,7 @@ int task_action_player_login::on_success() {
             WLOGERROR("create task_action_player_async_jobs failed");
         } else {
             dispatcher_start_data_t start_data;
-            start_data.private_data = NULL;
+            start_data.private_data     = NULL;
             start_data.message.msg_addr = NULL;
             start_data.message.msg_type = 0;
 

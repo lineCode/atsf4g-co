@@ -109,9 +109,10 @@ void client_player::init_handles() {
 
 
 client_player::client_player()
-    : system_id_(hello::EN_OS_WINDOWS), version_(INT32_MAX), proto_version_(INT32_MAX), user_id_(0), sequence_(0), gamesvr_index_(0), is_connecting_(false) {
-    platform_.set_platform_id(hello::EN_PTI_ACCOUNT);
-    platform_.set_channel_id(hello::EN_PCI_NONE);
+    : platform_type_(hello::EN_PTI_WINDOWS), package_version_("255.255.255.255"), resource_version_("255.255.255.255"), protocol_version_("255.255.255.255"),
+      user_id_(0), sequence_(0), gamesvr_index_(0), is_connecting_(false) {
+    account_.set_account_type(hello::EN_ATI_ACCOUNT_INNER);
+    account_.set_channel_id(hello::EN_PCI_NONE);
 }
 
 client_player::~client_player() {
@@ -136,7 +137,7 @@ int client_player::on_connected(libuv_ptr_t net, int status) {
 
 
     std::string all_avail_types;
-    uint64_t type_sz = libatgw_inner_v1_c_global_get_crypt_size();
+    uint64_t    type_sz = libatgw_inner_v1_c_global_get_crypt_size();
     for (uint64_t i = 0; i < type_sz; ++i) {
         if (0 != i) {
             all_avail_types += ":";
@@ -158,7 +159,7 @@ int client_player::on_connected(libuv_ptr_t net, int status) {
 
 void client_player::on_alloc(libuv_ptr_t net, size_t suggested_size, uv_buf_t *buf) {
     libatgw_inner_v1_c_context proto_handle = mutable_proto_context(net);
-    uint64_t len = static_cast<uint64_t>(buf->len);
+    uint64_t                   len          = static_cast<uint64_t>(buf->len);
     libatgw_inner_v1_c_read_alloc(proto_handle, suggested_size, &buf->base, &len);
 
 #if _MSC_VER
@@ -170,7 +171,7 @@ void client_player::on_alloc(libuv_ptr_t net, size_t suggested_size, uv_buf_t *b
 
 void client_player::on_read_data(libuv_ptr_t net, ssize_t nread, const uv_buf_t *buf) {
     libatgw_inner_v1_c_context proto_handle = mutable_proto_context(net);
-    int32_t errcode = 0;
+    int32_t                    errcode      = 0;
     libatgw_inner_v1_c_read(proto_handle, nread, buf->base, static_cast<uint64_t>(nread), &errcode);
 }
 
@@ -225,7 +226,7 @@ libatgw_inner_v1_c_context client_player::mutable_proto_context(libuv_ptr_t net)
     }
 
     libatgw_inner_v1_c_context ret = libatgw_inner_v1_c_create();
-    proto_handles_[id] = ret;
+    proto_handles_[id]             = ret;
     libatgw_inner_v1_c_set_private_data(ret, this);
     return ret;
 }

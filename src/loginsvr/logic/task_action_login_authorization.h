@@ -17,8 +17,8 @@
 
 class task_action_login_authorization : public task_action_cs_req_base {
 public:
-    typedef task_action_cs_req_base::msg_type msg_type;
-    typedef task_action_cs_req_base::msg_ref_type msg_ref_type;
+    typedef task_action_cs_req_base::msg_type      msg_type;
+    typedef task_action_cs_req_base::msg_ref_type  msg_ref_type;
     typedef task_action_cs_req_base::msg_cref_type msg_cref_type;
 
     typedef int (task_action_login_authorization::*auth_fn_t)(const ::hello::CSLoginAuthReq &);
@@ -38,7 +38,7 @@ public:
 private:
     int32_t check_proto_update(uint32_t iVer);
 
-    auth_fn_t get_verify_fn(uint32_t plat_id);
+    auth_fn_t get_verify_fn(uint32_t account_type);
 
     void init_login_data(hello::table_login &tb, const ::hello::CSLoginAuthReq &req, int64_t player_uid, uint32_t channel_id);
 
@@ -57,12 +57,12 @@ private:
     int verify_plat_account(const ::hello::CSLoginAuthReq &req);
 
 private:
-    bool is_new_player_;
-    uint32_t strategy_type_;
-    std::string version_;
-    std::string final_open_id_;
-    uint64_t final_user_id_;
-    hello::table_login login_data_;
+    bool                    is_new_player_;
+    uint32_t                strategy_type_;
+    std::string             version_;
+    std::string             final_open_id_;
+    uint64_t                final_user_id_;
+    hello::table_login      login_data_;
     hello::DClientUpdateCfg update_info_; // 更新信息
 
     google::protobuf::RepeatedPtrField< ::google::protobuf::string> gamesvr_addrs_; // 登录地址

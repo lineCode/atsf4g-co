@@ -24,9 +24,9 @@ message table_login {
     // 注册信息
     int64 register_time = 31; // 注册时间
 
-    platform_information platform   = 41; // 平台信息
-    login_record         last_login = 42; // 上次登入的信息
-    account_except       except     = 43; // 账户异常数据
+    account_information account    = 41; // 账号信息
+    login_record        last_login = 42; // 上次登入的信息
+    account_except      except     = 43; // 账户异常数据
 
     // 统计数据
     uint32 stat_login_total_times   = 51; // 总登入次数
@@ -38,9 +38,9 @@ message table_user {
     string open_id = 1;
     uint64 user_id = 2;
 
-    platform_information platform     = 11; // 平台信息
-    player_data          player       = 12; // 玩家数据
-    uint32               data_version = 13; // 数据版本号
+    account_information account      = 11; // 账号信息
+    player_data         player       = 12; // 玩家数据
+    uint32              data_version = 13; // 数据版本号
 
     player_options options = 21; // 玩家选项
 }

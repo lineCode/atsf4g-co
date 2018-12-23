@@ -12,6 +12,7 @@
 #include <protocol/pbdesc/com.protocol.pb.h>
 #include <protocol/pbdesc/svr.table.pb.h>
 
+#include <utility/protobuf_mini_dumper.h>
 
 #include <dispatcher/task_manager.h>
 
@@ -56,7 +57,7 @@ public:
 
 private:
     value_type real_data_;
-    bool dirty_;
+    bool       dirty_;
 };
 
 /**
@@ -66,7 +67,7 @@ private:
 template <typename Ty>
 class player_cache_ptr_holder : public util::design_pattern::noncopyable {
 public:
-    typedef Ty value_type;
+    typedef Ty          value_type;
     typedef value_type *pointer_type;
 
     player_cache_ptr_holder(pointer_type &holded, pointer_type ptr_addr) : ptr_addr_(NULL) {
@@ -75,7 +76,7 @@ public:
         }
 
         ptr_addr_ = &holded;
-        holded = ptr_addr;
+        holded    = ptr_addr;
     }
 
     ~player_cache_ptr_holder() UTIL_CONFIG_NOEXCEPT {
@@ -165,15 +166,15 @@ public:
     bool has_session() const;
 
     inline const std::string &get_open_id() const { return openid_id_; };
-    inline uint64_t get_user_id() const { return user_id_; };
+    inline uint64_t           get_user_id() const { return user_id_; };
     inline unsigned long long get_user_id_llu() const { return static_cast<unsigned long long>(get_user_id()); };
 
     const std::string &get_version() const { return version_; };
-    std::string &get_version() { return version_; };
-    void set_version(const std::string &version) { version_ = version; };
+    std::string &      get_version() { return version_; };
+    void               set_version(const std::string &version) { version_ = version; };
 
     const hello::DClientDeviceInfo &get_client_info() const { return client_info_; }
-    void set_client_info(const hello::DClientDeviceInfo &info) { client_info_.CopyFrom(info); }
+    void                            set_client_info(const hello::DClientDeviceInfo &info) { protobuf_mini_dumper_copy(client_info_, info); }
 
     /**
      * @brief 是否完整执行过初始化
@@ -214,7 +215,7 @@ public:
     /**
      * @brief 获取大区号
      */
-    inline uint32_t get_zone_id() const { return platform_info_->zone_id(); }
+    inline uint32_t get_zone_id() const { return account_info_->zone_id(); }
 
     /**
      * @brief 获取玩家等级
@@ -265,16 +266,16 @@ public:
     void clear_dirty_cache();
 
     inline const hello::table_login &get_login_info() const { return login_info_; }
-    inline hello::table_login &get_login_info() { return login_info_; }
+    inline hello::table_login &      get_login_info() { return login_info_; }
 
     inline const std::string &get_login_version() const { return login_info_version_; }
-    inline std::string &get_login_version() { return login_info_version_; }
+    inline std::string &      get_login_version() { return login_info_version_; }
 
-    inline const hello::platform_information &get_platform_info() const { return platform_info_; }
-    inline hello::platform_information &get_platform_info() { return platform_info_.ref(); }
+    inline const hello::account_information &get_account_info() const { return account_info_; }
+    inline hello::account_information &      get_account_info() { return account_info_.ref(); }
 
     inline const hello::player_options &get_player_options() const { return player_options_; }
-    inline hello::player_options &get_player_options() { return player_options_.ref(); }
+    inline hello::player_options &      get_player_options() { return player_options_.ref(); }
 
     inline const hello::player_data &get_player_data() const { return player_data_; }
 
@@ -289,13 +290,13 @@ private:
     void try_patch_remote_command();
 
 private:
-    std::string openid_id_;
-    uint64_t user_id_;
+    std::string        openid_id_;
+    uint64_t           user_id_;
     hello::table_login login_info_;
-    std::string login_info_version_;
+    std::string        login_info_version_;
 
     std::string version_;
-    uint32_t data_version_;
+    uint32_t    data_version_;
 
     mutable std::bitset<inner_flag::EN_IFT_MAX> inner_flags_;
 
@@ -303,13 +304,13 @@ private:
 
     hello::DClientDeviceInfo client_info_;
 
-    player_dirty_wrapper<hello::platform_information> platform_info_;
-    player_dirty_wrapper<hello::player_data> player_data_;
-    player_dirty_wrapper<hello::player_options> player_options_;
+    player_dirty_wrapper<hello::account_information> account_info_;
+    player_dirty_wrapper<hello::player_data>         player_data_;
+    player_dirty_wrapper<hello::player_options>      player_options_;
 
     // =======================================================
-    heartbeat_t heartbeat_data_;
-    cache_t cache_data_;
+    heartbeat_t              heartbeat_data_;
+    cache_t                  cache_data_;
     task_manager::task_ptr_t remote_command_patch_task_;
     // -------------------------------------------------------
 };
@@ -340,7 +341,7 @@ public:
 
 private:
     player::ptr_t owner_;
-    value_type msg_;
+    value_type    msg_;
 };
 
 #endif

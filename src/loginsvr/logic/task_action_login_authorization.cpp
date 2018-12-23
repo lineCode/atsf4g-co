@@ -18,6 +18,7 @@
 
 #include <proto_base.h>
 
+#include <utility/protobuf_mini_dumper.h>
 #include <utility/random_engine.h>
 
 #include <data/session.h>
@@ -45,7 +46,7 @@ int task_action_login_authorization::operator()() {
     // 设置登入协议ID
     my_sess->set_login_task_id(get_task_id());
 
-    int res = 0;
+    int         res = 0;
     std::string login_code;
     login_code.resize(32);
     rpc::auth::login::generate_login_code(&login_code[0], login_code.size());
@@ -59,18 +60,18 @@ int task_action_login_authorization::operator()() {
     }
 
     const ::hello::CSLoginAuthReq &msg_body_raw = req.body().mcs_login_auth_req();
-    ::hello::CSLoginAuthReq msg_body;
-    msg_body.CopyFrom(msg_body_raw);
+    ::hello::CSLoginAuthReq        msg_body;
+    protobuf_mini_dumper_copy(msg_body, msg_body_raw);
 
     // 2. 版本号及更新逻辑
-    uint32_t plat_id = msg_body.platform().platform_id();
+    uint32_t account_type = msg_body.account().account_type();
     // 调试平台状态，强制重定向平台，并且不验证密码
     if (logic_config::me()->get_cfg_svr_login().debug_platform_mode > 0) {
-        plat_id = logic_config::me()->get_cfg_svr_login().debug_platform_mode;
+        account_type = logic_config::me()->get_cfg_svr_login().debug_platform_mode;
     }
 
-    uint32_t channel_id = msg_body.platform().channel_id();
-    uint32_t system_id = msg_body.system_id();
+    uint32_t channel_id    = msg_body.account().channel_id();
+    uint32_t platform_type = msg_body.platform_type();
     // uint32_t version = msg_body.version();
 
     final_open_id_ = make_openid(msg_body_raw);
@@ -78,9 +79,9 @@ int task_action_login_authorization::operator()() {
 
     // TODO judge the update strategy
     // do {
-    //    strategy_type_ = update_rule_manager::me()->get_version_type(plat_id, system_id, version);
+    //    strategy_type_ = update_rule_manager::me()->get_version_type(account_type, platform_type, version);
     //    // 检查客户端更新信息 更新不分平台值0
-    //    if (update_rule_manager::me()->check_update(update_info_, plat_id, channel_id, system_id, version, strategy_type_)) {
+    //    if (update_rule_manager::me()->check_update(update_info_, account_type, channel_id, platform_type, version, strategy_type_)) {
     //        set_rsp_code(hello::EN_ERR_LOGIN_VERSION);
     //        return hello::EN_ERR_LOGIN_VERSION;
     //    }
@@ -89,16 +90,16 @@ int task_action_login_authorization::operator()() {
     // 3. 平台校验逻辑
     // 调试模式不用验证
     if (logic_config::me()->get_cfg_svr_login().debug_platform_mode <= 0) {
-        auth_fn_t vfn = get_verify_fn(plat_id);
+        auth_fn_t vfn = get_verify_fn(account_type);
         if (NULL == vfn) {
             // 平台不收支持错误码
             set_rsp_code(hello::EN_ERR_LOGIN_INVALID_PLAT);
-            WLOGERROR("user %s report invalid platform %u", msg_body.open_id().c_str(), plat_id);
+            WLOGERROR("user %s report invalid account type %u", msg_body.open_id().c_str(), account_type);
             return hello::err::EN_SUCCESS;
         }
 
         // 第三方平台用原始数据
-        if (plat_id == hello::EN_PTI_ACCOUNT) {
+        if (account_type == hello::EN_ATI_ACCOUNT_INNER) {
             res = (this->*vfn)(msg_body);
         } else {
             res = (this->*vfn)(msg_body_raw);
@@ -210,7 +211,7 @@ int task_action_login_authorization::operator()() {
                 // 8. 验证踢出后的登入pd
                 login_data_.Clear();
                 uint64_t old_svr_id = login_data_.router_server_id();
-                res = rpc::db::login::get(msg_body.open_id().c_str(), login_data_, version_);
+                res                 = rpc::db::login::get(msg_body.open_id().c_str(), login_data_, version_);
                 if (res < 0) {
                     WLOGERROR("call login rpc method failed, msg: %s", msg_body.DebugString().c_str());
                     set_rsp_code(hello::EN_ERR_LOGIN_ALREADY_ONLINE);
@@ -246,8 +247,8 @@ int task_action_login_authorization::operator()() {
         init_login_data(login_data_, msg_body, player_uid, channel_id);
 
         // 注册日志
-        WLOGINFO("player %s register account finished, allocate player id: %lld, platform: %u, channel: %u, system: %d", msg_body.open_id().c_str(),
-                 static_cast<long long>(player_uid), plat_id, channel_id, system_id);
+        WLOGINFO("player %s register account finished, allocate player id: %lld, account type: %u, channel: %u, platform: %d", msg_body.open_id().c_str(),
+                 static_cast<long long>(player_uid), account_type, channel_id, platform_type);
     }
 
     // 登入信息
@@ -261,10 +262,10 @@ int task_action_login_authorization::operator()() {
         login_data_.set_login_code_expired(logic_config::me()->get_cfg_logic().session_login_code_valid_sec + util::time::time_utility::get_now());
 
         // 平台信息更新
-        ::hello::platform_information *plat_dst = login_data_.mutable_platform();
-        const ::hello::DPlatformData &plat_src = msg_body.platform();
+        ::hello::account_information *plat_dst = login_data_.mutable_account();
+        const ::hello::DAccountData & plat_src = msg_body.account();
 
-        plat_dst->set_platform_id(static_cast<hello::EnPlatformTypeID>(plat_id));
+        plat_dst->set_account_type(static_cast<hello::EnAccountTypeID>(account_type));
         plat_dst->set_zone_id(logic_config::me()->get_cfg_logic().zone_id);
         if (!plat_src.access().empty()) {
             plat_dst->set_access(plat_src.access());
@@ -336,7 +337,7 @@ int task_action_login_authorization::on_failed() {
         return hello::err::EN_SUCCESS;
     }
 
-    hello::CSMsg &msg = add_rsp_msg();
+    hello::CSMsg &         msg      = add_rsp_msg();
     hello::SCLoginAuthRsp *rsp_body = msg.mutable_body()->mutable_msc_login_auth_rsp();
     rsp_body->set_login_code("");
     rsp_body->set_open_id(final_open_id_);
@@ -369,15 +370,15 @@ int32_t task_action_login_authorization::check_proto_update(uint32_t ver_no) {
     return hello::err::EN_SUCCESS;
 }
 
-task_action_login_authorization::auth_fn_t task_action_login_authorization::get_verify_fn(uint32_t plat_id) {
-    static auth_fn_t all_auth_fns[hello::EnPlatformTypeID_ARRAYSIZE];
+task_action_login_authorization::auth_fn_t task_action_login_authorization::get_verify_fn(uint32_t account_type) {
+    static auth_fn_t all_auth_fns[hello::EnAccountTypeID_ARRAYSIZE];
 
-    if (NULL != all_auth_fns[hello::EN_PTI_ACCOUNT]) {
-        return all_auth_fns[plat_id % hello::EnPlatformTypeID_ARRAYSIZE];
+    if (NULL != all_auth_fns[hello::EN_ATI_ACCOUNT_INNER]) {
+        return all_auth_fns[account_type % hello::EnAccountTypeID_ARRAYSIZE];
     }
 
-    all_auth_fns[hello::EN_PTI_ACCOUNT] = &task_action_login_authorization::verify_plat_account;
-    return all_auth_fns[plat_id % hello::EnPlatformTypeID_ARRAYSIZE];
+    all_auth_fns[hello::EN_ATI_ACCOUNT_INNER] = &task_action_login_authorization::verify_plat_account;
+    return all_auth_fns[account_type % hello::EnAccountTypeID_ARRAYSIZE];
 }
 
 void task_action_login_authorization::init_login_data(hello::table_login &tb, const ::hello::CSLoginAuthReq &req, int64_t player_uid, uint32_t channel_id) {
@@ -391,8 +392,8 @@ void task_action_login_authorization::init_login_data(hello::table_login &tb, co
 
     tb.set_ban_time(0);
 
-    // tb.mutable_platform()->mutable_profile()->mutable_uuid()->set_open_id(req.open_id());
-    tb.mutable_platform()->set_channel_id(channel_id);
+    // tb.mutable_account()->mutable_profile()->mutable_uuid()->set_open_id(req.open_id());
+    tb.mutable_account()->set_channel_id(channel_id);
 
     version_.assign("0");
     is_new_player_ = true;
@@ -403,14 +404,13 @@ void task_action_login_authorization::init_login_data(hello::table_login &tb, co
 }
 
 std::string task_action_login_authorization::make_openid(const hello::CSLoginAuthReq &req) {
-    return rpc::auth::login::make_open_id(logic_config::me()->get_cfg_logic().zone_id, req.platform().platform_id(), req.platform().channel_id(),
-                                          req.open_id());
+    return rpc::auth::login::make_open_id(logic_config::me()->get_cfg_logic().zone_id, req.account().account_type(), req.account().channel_id(), req.open_id());
 }
 
 int task_action_login_authorization::verify_plat_account(const ::hello::CSLoginAuthReq &req) {
     hello::table_login tb;
-    std::string version;
-    int res = rpc::db::login::get(req.open_id().c_str(), tb, version);
+    std::string        version;
+    int                res = rpc::db::login::get(req.open_id().c_str(), tb, version);
     if (hello::err::EN_DB_RECORD_NOT_FOUND != res && res < 0) {
         WLOGERROR("call login rpc method failed, msg: %s", req.DebugString().c_str());
         return hello::EN_ERR_SYSTEM;
@@ -421,8 +421,8 @@ int task_action_login_authorization::verify_plat_account(const ::hello::CSLoginA
     }
 
     // 校验密码
-    if (!req.has_platform()) {
-        if (tb.platform().access().empty()) {
+    if (!req.has_account()) {
+        if (tb.account().access().empty()) {
             return hello::EN_SUCCESS;
         }
 
@@ -430,7 +430,7 @@ int task_action_login_authorization::verify_plat_account(const ::hello::CSLoginA
         return hello::EN_ERR_INVALID_PARAM;
     }
 
-    if (req.platform().access() != tb.platform().access()) {
+    if (req.account().access() != tb.account().access()) {
         // 平台校验不通过错误码
         return hello::EN_ERR_LOGIN_VERIFY;
     }

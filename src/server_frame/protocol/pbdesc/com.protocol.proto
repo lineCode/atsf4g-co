@@ -11,10 +11,11 @@ package hello;
 /////////////////////////////////////////////////////
 
 message CSLoginUpdateReq {
-    DPlatformData platform      = 1; // 平台信息
-    int32         system_id     = 2; // 系统id，ios or android
-    int32         version       = 3;
-    int32         proto_version = 4; // 协议版本
+    DAccountData account          = 1;  // 平台信息
+    int32        platform_type    = 2;  // 系统id，ios or android
+    string       package_version  = 11; // 包版本
+    string       resource_version = 12; // 资源版本
+    string       protocol_version = 13; // 协议版本
 }
 
 message SCLoginUpdateRsp {
@@ -24,13 +25,14 @@ message SCLoginUpdateRsp {
 
 
 message CSLoginAuthReq {
-    string        open_id       = 1;
-    DPlatformData platform      = 2; // 平台信息
-    int32         system_id     = 3; // 系统id，ios or android
-    int32         version       = 4;
-    int32         proto_version = 5; // 协议版本
+    string       open_id          = 1;
+    DAccountData account          = 2;  // 平台信息
+    int32        platform_type    = 3;  // 系统id，ios or android
+    string       package_version  = 11; // 包版本
+    string       resource_version = 12; // 资源版本
+    string       protocol_version = 13; // 协议版本
 
-    DClientDeviceInfo client_info = 11;
+    DClientDeviceInfo client_info = 21;
 }
 
 message SCLoginAuthRsp {
@@ -68,7 +70,7 @@ message CSLoginReq {
     string            login_code  = 1; // loginsvr下发的登录码
     string            open_id     = 2;
     uint64            user_id     = 3; // 玩家数字ID
-    DPlatformData     platform    = 4; // 平台信息
+    DAccountData      account     = 4; // 平台信息
     DClientDeviceInfo client_info = 11;
 }
 

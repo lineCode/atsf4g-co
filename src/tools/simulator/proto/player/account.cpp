@@ -6,6 +6,7 @@
 #include <common/string_oprs.h>
 #include <random/random_generator.h>
 
+#include <utility/protobuf_mini_dumper.h>
 
 #include <simulator_active.h>
 #include <utility/client_config.h>
@@ -17,7 +18,7 @@ namespace proto {
         void on_cmd_login_auth(util::cli::callback_param params) {
             SIMULATOR_CHECK_PARAMNUM(params, 1);
             client_simulator::cmd_sender_t &sender = client_simulator::get_cmd_sender(params);
-            sender.player = sender.self->create_player<client_player>(client_config::host, client_config::port);
+            sender.player                          = sender.self->create_player<client_player>(client_config::host, client_config::port);
 
             if (!sender.player) {
                 SIMULATOR_ERR_MSG() << "create player and try to connect to " << client_config::host << ":" << client_config::port << " failed" << std::endl;
@@ -29,28 +30,30 @@ namespace proto {
             // token
             hello::CSLoginAuthReq *req_body = msg.mutable_body()->mutable_mcs_login_auth_req();
             req_body->set_open_id(params[0]->to_cpp_string());
-            req_body->set_version(sender.player->get_version());
+            req_body->set_resource_version(sender.player->get_resource_version());
+            req_body->set_package_version(sender.player->get_package_version());
+            req_body->set_protocol_version(sender.player->get_protocol_version());
 
             if (params.get_params_number() > 1) {
-                sender.player->set_system_id(params[1]->to_int32());
+                sender.player->set_platform_type(params[1]->to_int32());
             }
 
             if (params.get_params_number() > 2) {
-                sender.player->get_platform().set_platform_id(params[2]->to_int32());
+                sender.player->get_account().set_account_type(params[2]->to_int32());
             }
 
             if (params.get_params_number() > 3) {
-                sender.player->get_platform().set_access(params[3]->to_cpp_string());
+                sender.player->get_account().set_access(params[3]->to_cpp_string());
             } else {
-                sender.player->get_platform().set_access("");
+                sender.player->get_account().set_access("");
             }
 
             if (params.get_params_number() > 4) {
                 sender.player->set_gamesvr_index(params[4]->to_int32());
             }
 
-            req_body->mutable_platform()->CopyFrom(sender.player->get_platform());
-            req_body->set_system_id(sender.player->get_system_id());
+            protobuf_mini_dumper_copy(*req_body->mutable_account(), sender.player->get_account());
+            req_body->set_platform_type(sender.player->get_platform_type());
         }
 
         void on_rsp_login_auth(client_simulator::player_ptr_t player, client_simulator::msg_t &msg) {
@@ -103,16 +106,16 @@ namespace proto {
             }
 
             // ==================== 重建连接 =======================
-            std::string url = sender.player->get_gamesvr_addr();
-            std::string::size_type p = url.find_last_of(":");
+            std::string            url = sender.player->get_gamesvr_addr();
+            std::string::size_type p   = url.find_last_of(":");
             if (p == std::string::npos || p == url.size() - 1) {
                 SIMULATOR_ERR_MSG() << "gameurl: " << url << " invalid" << std::endl;
                 sender.player->close();
                 return;
             }
-            std::string gamesvr_ip = url.substr(0, p);
+            std::string gamesvr_ip   = url.substr(0, p);
             std::string gamesvr_port = url.substr(p + 1, url.size() - p - 1);
-            int port = 0;
+            int         port         = 0;
             util::string::str2int(port, gamesvr_port.c_str());
             int res = sender.player->connect(gamesvr_ip.c_str(), port);
             if (res) {
@@ -121,13 +124,13 @@ namespace proto {
                 return;
             }
 
-            client_simulator::msg_t &req = client_simulator::add_req(params);
-            hello::CSLoginReq *req_body = req.mutable_body()->mutable_mcs_login_req();
+            client_simulator::msg_t &req      = client_simulator::add_req(params);
+            hello::CSLoginReq *      req_body = req.mutable_body()->mutable_mcs_login_req();
 
             req_body->set_login_code(sender.player->get_login_code());
             req_body->set_open_id(sender.player->get_id());
             req_body->set_user_id(sender.player->get_user_id());
-            req_body->mutable_platform()->CopyFrom(sender.player->get_platform());
+            protobuf_mini_dumper_copy(*req_body->mutable_account(), sender.player->get_account());
         }
 
         void on_rsp_login(client_simulator::player_ptr_t player, client_simulator::msg_t &msg) {
@@ -152,13 +155,13 @@ namespace proto {
         void on_cmd_get_info(util::cli::callback_param params) {
             SIMULATOR_CHECK_PLAYER_PARAMNUM(params, 1);
 
-            const ::google::protobuf::Descriptor *mds = hello::CSPlayerGetInfoReq::descriptor();
-            int field_count = mds->field_count();
+            const ::google::protobuf::Descriptor *mds         = hello::CSPlayerGetInfoReq::descriptor();
+            int                                   field_count = mds->field_count();
 
-            client_simulator::msg_t &req = client_simulator::add_req(params);
+            client_simulator::msg_t &  req      = client_simulator::add_req(params);
             hello::CSPlayerGetInfoReq *req_body = req.mutable_body()->mutable_mcs_player_getinfo_req();
 
-            std::string seg_name;
+            std::string                         seg_name;
             const google::protobuf::Reflection *reflet = req_body->GetReflection();
             for (size_t i = 0; i < params.get_params_number(); ++i) {
                 if ("all" == params[i]->to_cpp_string()) {
@@ -190,8 +193,8 @@ namespace proto {
 } // namespace proto
 
 SIMULATOR_ACTIVE(player_account, base) {
-    client_simulator::cast(base)->reg_req()["Player"]["Login"].bind(proto::player::on_cmd_login_auth,
-                                                                    "<openid> [system id=0] [platform=1] [access=''] [use gamesvr=0] login into loginsvr");
+    client_simulator::cast(base)->reg_req()["Player"]["Login"].bind(
+        proto::player::on_cmd_login_auth, "<openid> [platform type=0] [account type=1] [access=''] [use gamesvr=0] login into loginsvr");
     client_simulator::cast(base)->reg_rsp("msc_login_auth_rsp", proto::player::on_rsp_login_auth);
 
     client_simulator::cast(base)->reg_req()["Player"]["LoginGame"].bind(proto::player::on_cmd_login, "login into gamesvr");
@@ -206,8 +209,8 @@ SIMULATOR_ACTIVE(player_account, base) {
     {
         // 通过protobuf反射的智能补全设置
         client_simulator::cast(base)->reg_req()["Player"]["GetInfo"]["all"];
-        const ::google::protobuf::Descriptor *mds = hello::CSPlayerGetInfoReq::descriptor();
-        int field_count = mds->field_count();
+        const ::google::protobuf::Descriptor *mds         = hello::CSPlayerGetInfoReq::descriptor();
+        int                                   field_count = mds->field_count();
 
         for (int i = 0; i < field_count; ++i) {
             client_simulator::cast(base)->reg_req()["Player"]["GetInfo"][mds->field(i)->name().substr(5)];
